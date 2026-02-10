@@ -44,9 +44,9 @@
 <body>
 <header>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-    <h1 style="margin:0;font-size:1.1rem;">疑惑・解消手続き案内ジェネレーター（選挙編）</h1>
-    <span class="pill" id="versionPill">v1</span>
-  </div>
+	    <h1 style="margin:0;font-size:1.1rem;">疑惑・解消手続き案内ジェネレーター（選挙編）</h1>
+	    <span class="pill" id="versionPill">v2</span>
+	  </div>
   <p class="hint warn" style="margin:10px 0 0;">
     これは「疑惑を手続きに落とす」ための整理ツールです。マスコミに投げる前に、まず制度へどうぞ。
   </p>
@@ -57,11 +57,12 @@
     <fieldset>
       <legend>入力フォーム</legend>
 
-      <label for="caseType">ケース</label>
-      <select id="caseType">
-        <option value="counting">ケース1: 開票・集計で不正があった</option>
-        <option value="invalid">ケース2: 選挙実施そのものが違法・違憲</option>
-      </select>
+	      <label for="caseType">ケース</label>
+	      <select id="caseType">
+	        <option value="counting">ケース1: 開票・集計で不正があった</option>
+	        <option value="invalid">ケース2: 選挙実施そのものが違法・違憲</option>
+	        <option value="idcheck">ケース3: 投票所の本人確認運用が不適切/不統一</option>
+	      </select>
 
       <div class="row">
         <div>
@@ -74,14 +75,14 @@
         </div>
       </div>
 
-      <div class="row" id="countingOnlyRow">
-        <div>
-          <label for="place">投票所/開票所（任意）</label>
-          <input id="place" placeholder="例: ○○小学校 開票所" />
-        </div>
-        <div>
-          <label for="dateTime">日時（任意）</label>
-          <input id="dateTime" placeholder="例: 2026-02-10 20:30" />
+	      <div class="row" id="countingOnlyRow">
+	        <div>
+	          <label for="place" id="placeLabel">投票所/開票所（任意）</label>
+	          <input id="place" placeholder="例: ○○小学校 開票所" />
+	        </div>
+	        <div>
+	          <label for="dateTime">日時（任意）</label>
+	          <input id="dateTime" placeholder="例: 2026-02-10 20:30" />
         </div>
       </div>
 
@@ -159,9 +160,11 @@
 <script>
   const $ = (id) => document.getElementById(id);
 
-  const caseType = $("caseType");
-  const countingOnlyRow = $("countingOnlyRow");
-  const out = $("out");
+	  const caseType = $("caseType");
+	  const countingOnlyRow = $("countingOnlyRow");
+	  const placeLabel = $("placeLabel");
+	  const placeInput = $("place");
+	  const out = $("out");
 
   function selectedValues(selectEl) {
     return Array.from(selectEl.selectedOptions).map(o => o.value);
@@ -171,13 +174,25 @@
     return (s || "").replace(/\r\n/g, "\n").trim();
   }
 
-  function showHideCountingRow() {
-    const isCounting = caseType.value === "counting";
-    countingOnlyRow.style.display = isCounting ? "grid" : "none";
-  }
+	  function showHideCountingRow() {
+	    const type = caseType.value;
+	    const show = type === "counting" || type === "idcheck";
+	    countingOnlyRow.style.display = show ? "grid" : "none";
+	
+	    if (type === "counting") {
+	      placeLabel.textContent = "投票所/開票所（任意）";
+	      placeInput.placeholder = "例: ○○小学校 開票所";
+	    } else if (type === "idcheck") {
+	      placeLabel.textContent = "投票所（任意）";
+	      placeInput.placeholder = "例: ○○小学校 投票所";
+	    } else {
+	      placeLabel.textContent = "投票所/開票所（任意）";
+	      placeInput.placeholder = "例: ○○小学校 開票所";
+	    }
+	  }
 
-  function buildMarkdown() {
-    const type = caseType.value;
+	  function buildMarkdown() {
+	    const type = caseType.value;
     const electionName = escapeMd($("electionName").value);
     const area = escapeMd($("area").value);
     const place = escapeMd($("place").value);
@@ -193,11 +208,13 @@
     const missing = [];
     if (!electionName) missing.push("対象選挙名");
     if (!area) missing.push("自治体");
-    if (!claim) missing.push("主張（何が起きたと考えるか）");
+	    if (!claim) missing.push("主張（何が起きたと考えるか）");
 
-    const caseTitle = type === "counting"
-      ? "ケース1：開票・集計で不正があったと主張する場合"
-      : "ケース2：選挙実施そのものが違法・違憲だったと主張する場合";
+	    const caseTitle = type === "counting"
+	      ? "ケース1：開票・集計で不正があったと主張する場合"
+	      : type === "invalid"
+	        ? "ケース2：選挙実施そのものが違法・違憲だったと主張する場合"
+	        : "ケース3：投票所における本人確認運用が不適切・不統一だと主張する場合";
 
     const whoLabel = ({
       voter: "有権者",
@@ -219,58 +236,184 @@
       ? actions.map(a => `- ${actionsLabel[a] || a}`).join("\n")
       : "- （未選択）";
 
-    const deadlineNote = type === "counting" || type === "invalid"
-      ? "- 選挙無効訴訟: 選挙後30日以内（目安。具体は専門家・公式情報で確認）"
-      : "";
+	    const deadlineNote = type === "counting" || type === "invalid" || type === "idcheck"
+	      ? "- 選挙無効訴訟: 選挙後30日以内（目安。具体は専門家・公式情報で確認）"
+	      : "";
 
-    const countingExtra = (type === "counting")
-      ? `\n### 追加情報（開票・集計系）\n- 投票所/開票所: ${place || "（未記入）"}\n- 日時: ${dateTime || "（未記入）"}\n`
-      : "";
+	    const countingExtra = (type === "counting")
+	      ? `\n### 追加情報（開票・集計系）\n- 投票所/開票所: ${place || "（未記入）"}\n- 日時: ${dateTime || "（未記入）"}\n`
+	      : (type === "idcheck")
+	        ? `\n### 追加情報（投票所の本人確認運用）\n- 投票所: ${place || "（未記入）"}\n- 日時: ${dateTime || "（未記入）"}\n`
+	      : "";
 
     const legalBlock = legal
       ? `\n### 根拠法・条文（申立て/告発の骨格）\n${legal.split("\n").map(l => `- ${l}`).join("\n")}\n`
       : `\n### 根拠法・条文（申立て/告発の骨格）\n- （未記入）\n`;
 
-    const missingBlock = missing.length
-      ? `\n> 注意: 必須項目が未入力です（${missing.join(" / ")}）。このままだと手続き以前の「感想」扱いになります。\n`
-      : "";
+	    const missingBlock = missing.length
+	      ? `\n> 注意: 必須項目が未入力です（${missing.join(" / ")}）。このままだと手続き以前の「感想」扱いになります。\n`
+	      : "";
 
-    const base = `# 疑惑・解消手続き案内（選挙編）
+	    if (type === "idcheck") {
+	      const legalLines = legal
+	        ? legal.split("\n").filter(Boolean).map(l => `- ${l}`).join("\n")
+	        : "- （未記入）";
 
-## ${caseTitle}
+	      const baseLines = [
+	        "# 疑惑・解消手続き案内（選挙編）",
+	        "",
+	        `## ${caseTitle}`,
+	        "",
+	        "### 結論（先に）",
+	        "本人確認の厳格さは、現行制度上、一定の範囲で選挙管理委員会（実務運用）の裁量が大きい領域です。  ",
+	        "そのため「投票所によって対応が違う」こと“だけ”では、直ちに違法・選挙無効と結論づけにくい点に注意が必要です。",
+	        "",
+	        "---",
+	        "",
+	        "### 0) 概要",
+	        `- 対象選挙名: ${electionName || "（未記入）"}`,
+	        `- 自治体: ${area || "（未記入）"}`,
+	        `- 投票所: ${place || "（未記入）"}`,
+	        `- 日時: ${dateTime || "（未記入）"}`,
+	        `- 申立人の立場: ${whoLabel}`,
+	        `- 期限認識: ${deadlineKnown === "known" ? "把握している" : "不明/未確認"}`,
+	        "",
+	        "### 1) 主張（必須）",
+	        claim || "（未記入）",
+	        "",
+	        "### 2) 具体的事実（推奨）",
+	        facts || "（未記入）",
+	        "",
+	        "### 3) 証拠（推奨）",
+	        evidence || "（未記入）",
+	        "",
+	        "---",
+	        "",
+	        "## ① 必要なもの（最低条件）",
+	        "",
+	        "### A. 疑義の特定（まず事実を固定）",
+	        `- 対象選挙名: ${electionName || "（未記入）"}`,
+	        `- 自治体名（市区町村）: ${area || "（未記入）"}`,
+	        `- 投票所名: ${place || "（未記入）"}`,
+	        `- 日時: ${dateTime || "（未記入）"}`,
+	        "- 実際の対応内容（できるだけ具体的に）",
+	        "  - 本人確認書類の提示を求められたか（誰に／何を／どのタイミングで）",
+	        "  - 提示なしで投票できたか（「提示していない」だけでなく「求められなかった」のか等）",
+	        "  - どのような案内・説明があったか（掲示、口頭、配布物）",
+	        "  - 係員が根拠として挙げたルール（「この投票所の運用」等）",
+	        "",
+	        "### B. 比較対象（“不統一”の中身を具体化）",
+	        "- 他投票所・他自治体との具体的な差異（どこがどう違うか）",
+	        "- 公式の周知資料・Q&A・通知等との乖離（ある場合）",
+	        "- その差異により、どんな不利益が生じたか（例：投票を断念／長時間拘束／特定の有権者だけ過度負担 等）",
+	        "",
+	        "### C. 記録・証拠（可能な範囲で）",
+	        "- 当日のメモ（時系列・担当者の言葉）",
+	        "- 掲示物の写真（撮影可能な範囲で）",
+	        "- 同行者・周囲の証言（誰が見聞きしたか）",
+	        "- 公式サイト等の説明（スクリーンショット等）",
+	        "",
+	        "---",
+	        "",
+	        "## ② 手続き先（提出先の“種類”）",
+	        "- 市区町村選挙管理委員会（事実確認・説明要求・運用根拠の照会）",
+	        "- 都道府県選挙管理委員会（広域的な指導・是正の要望）",
+	        "- 裁判所（選挙無効訴訟 等：要件・適格・構成が必要）",
+	        "",
+	        "※ マスコミ・SNSは手続き先ではありません。",
+	        "",
+	        "---",
+	        "",
+	        "## ③ 手続き名（呼び方の例）",
+	        "- 照会（事実関係・運用根拠の確認）",
+	        "- 申入れ（是正・統一運用・再発防止の要望）",
+	        "- 異議申出",
+	        "- 審査申立て",
+	        "- 選挙無効訴訟（例外的／要件整理が必要）",
+	        "",
+	        "---",
+	        "",
+	        "## ④ 根拠法・資料（当たりを付ける）",
+	        "- 公職選挙法（投票手続・選挙事務）",
+	        "- 選挙管理委員会に関する規定（条例・規程・事務取扱い等を含む場合あり）",
+	        "- 公式の通知・Q&A・国会答弁・質問主意書等（参照できるものがあれば）",
+	        "- 憲法第15条（選挙権）等（主張の方向性により）",
+	        "",
+	        "### 根拠法・条文（任意メモ）",
+	        ...legalLines.split("\n"),
+	        "",
+	        "---",
+	        "",
+	        "## ⑤ 重要な注意点（飛躍を抑える）",
+	        "- 「本人確認していない（ように見える）」＝「不正が確定」＝「やり直し（選挙無効）」という短絡は避ける",
+	        "  - まずは“運用の事実”と“根拠（ルール）”を確定し、どの点が問題かを切り分ける",
+	        "- 運用差（不統一）があるだけでは、直ちに違法・無効と評価されにくいことがある",
+	        "  - 違法性を主張するなら、何がどの法令・通知・平等原則等に反し、どんな権利侵害・結果への影響があったかの説明が重要",
+	        "- 目的に応じてゴールを分ける",
+	        "  - ①説明要求／運用の統一・改善（行政対応）と、②選挙の効力を争う（司法）では必要な要件・立証の重さが大きく異なる",
+	        "- 期限に注意（断定せず“目安”として）",
+	        `  ${deadlineNote || "- （対象手続きにより期限が異なります）"}`,
+	        "",
+	        "---",
+	        "",
+	        "## 定型確認フレーズ（提出・相談前の最終チェック）",
+	        "- どの投票所で",
+	        "- どの本人確認が行われ（または行われず）",
+	        "- それが「何と比べて」不適切／不統一だと考え",
+	        "- どの法令・規程・通知等に照らして問題だと整理し",
+	        "- どこ（市区町村選管／都道府県選管／裁判所 等）に",
+	        "- いつ、どの手続き名で、何を求めましたか？",
+	        "",
+	        "---",
+	        "",
+	        "## 免責（PDF末尾用）",
+	        "本資料は、一般的な情報提供と事実整理のためのテンプレートであり、法律相談・個別案件への法的助言ではありません。  ",
+	        "手続きの選択、提出先、期限、記載内容の適否は事案により異なります。提出・申立て・提訴等は利用者本人の判断と責任で行い、必要に応じて専門家や公式情報で確認してください。  ",
+	        "本資料の利用によって生じたいかなる損害についても、作成者は責任を負いません。"
+	      ];
+	      const base = baseLines.join("\n");
 
-### 0) 概要
-- 対象選挙名: ${electionName || "（未記入）"}
-- 自治体: ${area || "（未記入）"}
-- 申立人の立場: ${whoLabel}
-- 期限認識: ${deadlineKnown === "known" ? "把握している" : "不明/未確認"}
+	      return base + missingBlock;
+	    }
 
-### 1) 主張（必須）
-${claim || "（未記入）"}
-
-### 2) 具体的事実（推奨）
-${facts || "（未記入）"}
-
-### 3) 証拠（推奨）
-${evidence || "（未記入）"}
-${countingExtra}
-### 4) 取りたい手続き（選択）
-${actionLines}
-${legalBlock}
-### 5) 提訴・申立て期限（重要）
-${deadlineNote || "- （対象手続きにより期限が異なります）"}
-
-### 6) 定型確認フレーズ
-- どの機関に
-- いつ
-- どの手続き名で
-- どの法律違反として
-提出しましたか？
-
-### 7) 注意書き（提出用テンプレ）
-本書は、正式な告発・申立て・提訴のための事前整理資料です。
-実際の手続きは、記載者本人の責任で行ってください。
-`;
+		    const baseLines = [
+		      "# 疑惑・解消手続き案内（選挙編）",
+		      "",
+		      `## ${caseTitle}`,
+		      "",
+		      "### 0) 概要",
+		      `- 対象選挙名: ${electionName || "（未記入）"}`,
+		      `- 自治体: ${area || "（未記入）"}`,
+		      `- 申立人の立場: ${whoLabel}`,
+		      `- 期限認識: ${deadlineKnown === "known" ? "把握している" : "不明/未確認"}`,
+		      "",
+		      "### 1) 主張（必須）",
+		      claim || "（未記入）",
+		      "",
+		      "### 2) 具体的事実（推奨）",
+		      facts || "（未記入）",
+		      "",
+		      "### 3) 証拠（推奨）",
+		      evidence || "（未記入）",
+		      ...(countingExtra ? ["", ...countingExtra.trim().split("\n")] : []),
+		      "### 4) 取りたい手続き（選択）",
+		      ...actionLines.split("\n"),
+		      ...(legalBlock ? ["", ...legalBlock.trim().split("\n")] : []),
+		      "### 5) 提訴・申立て期限（重要）",
+		      deadlineNote || "- （対象手続きにより期限が異なります）",
+		      "",
+		      "### 6) 定型確認フレーズ",
+		      "- どの機関に",
+		      "- いつ",
+		      "- どの手続き名で",
+		      "- どの法律違反として",
+		      "提出しましたか？",
+		      "",
+		      "### 7) 注意書き（提出用テンプレ）",
+		      "本書は、正式な告発・申立て・提訴のための事前整理資料です。",
+		      "実際の手続きは、記載者本人の責任で行ってください。"
+		    ];
+		    const base = baseLines.join("\n");
 
     return base + missingBlock;
   }
