@@ -4,18 +4,30 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>疑惑・解消手続き案内ジェネレーター（選挙編）</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
-    header { padding: 16px; border-bottom: 1px solid rgba(127,127,127,.3); }
-    main { max-width: 980px; margin: 0 auto; padding: 16px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-    fieldset { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 14px; }
-    legend { padding: 0 8px; font-weight: 700; }
-    label { display: block; margin: 10px 0 6px; font-weight: 600; }
-    input, select, textarea, button {
-      width: 100%; box-sizing: border-box;
+	  <style>
+	    :root { color-scheme: light dark; }
+	    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
+	    header { padding: 16px; border-bottom: 1px solid rgba(127,127,127,.3); }
+	    main { max-width: 980px; margin: 0 auto; padding: 16px; }
+	    .layout { display: grid; grid-template-columns: 1fr 260px; gap: 14px; align-items: start; }
+	    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+	    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+	    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+	    aside.sidebar { position: sticky; top: 14px; }
+	    @media (max-width: 980px) { aside.sidebar { position: static; } }
+	    .banner {
+	      border: 1px dashed rgba(127,127,127,.5);
+	      border-radius: 10px;
+	      padding: 12px;
+	      min-height: 180px;
+	    }
+	    .banner h2 { font-size: 0.95rem; margin: 0 0 8px; }
+	    .banner .hint { margin: 0; }
+	    fieldset { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 14px; }
+	    legend { padding: 0 8px; font-weight: 700; }
+	    label { display: block; margin: 10px 0 6px; font-weight: 600; }
+	    input, select, textarea, button {
+	      width: 100%; box-sizing: border-box;
       padding: 10px; border-radius: 10px;
       border: 1px solid rgba(127,127,127,.35);
       background: transparent;
@@ -50,12 +62,16 @@
   <p class="hint warn" style="margin:10px 0 0;">
     これは「疑惑を手続きに落とす」ための整理ツールです。マスコミに投げる前に、まず制度へどうぞ。
   </p>
+  <p>
+    <a href="https://amzn.to/4ahxQet"></a>
+  </p>
 </header>
 
-<main>
-  <div class="grid">
-    <fieldset>
-      <legend>入力フォーム</legend>
+	<main>
+	  <div class="layout">
+	    <div class="grid">
+	      <fieldset>
+	        <legend>入力フォーム</legend>
 
 	      <label for="caseType">ケース</label>
 	      <select id="caseType">
@@ -139,17 +155,25 @@
       <p class="hint warn" style="margin-top:12px;">
         注意: 期限がある手続き（特に選挙無効訴訟）を検討するなら、SNSで叫ぶ前に専門家へ。叫んでも期限は延びません。
       </p>
-    </fieldset>
+	      </fieldset>
 
-    <fieldset>
-      <legend>生成結果（Markdown）</legend>
-      <pre id="out"></pre>
-      <p class="hint">
-        このMarkdownをそのまま貼るだけで「手続き未到達の疑惑」を機械的に選別できます。人間同士で殴り合うより文明的。
-      </p>
-    </fieldset>
-  </div>
-</main>
+	      <fieldset>
+	        <legend>生成結果（Markdown）</legend>
+	        <pre id="out"></pre>
+	        <p class="hint">
+	          このMarkdownをそのまま貼るだけで「手続き未到達の疑惑」を機械的に選別できます。人間同士で殴り合うより文明的。
+	        </p>
+	      </fieldset>
+	    </div>
+
+	    <aside class="sidebar" aria-label="バナー">
+	      <div class="banner">
+	        <h2>バナースペース</h2>
+	        <p class="hint">ここに告知・リンク・注意書き等を配置できます（幅260px / スクロール追従）。</p>
+	      </div>
+	    </aside>
+	  </div>
+	</main>
 
 <footer>
   <div class="hint">
