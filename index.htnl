@@ -356,6 +356,7 @@ ${deadlineNote || "- （対象手続きにより期限が異なります）"}
     downloadPdfFromText("疑惑・解消手続き案内", md);
   });
 
+
   $("btnClear").addEventListener("click", () => {
     ["electionName","area","place","dateTime","claim","facts","evidence","legal"].forEach(id => $(id).value = "");
     $("actionsWanted").selectedIndex = -1;
