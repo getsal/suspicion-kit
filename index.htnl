@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>疑惑・解消手続き案内ジェネレーター（選挙編）</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
+    header { padding: 16px; border-bottom: 1px solid rgba(127,127,127,.3); }
+    main { max-width: 980px; margin: 0 auto; padding: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    fieldset { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 14px; }
+    legend { padding: 0 8px; font-weight: 700; }
+    label { display: block; margin: 10px 0 6px; font-weight: 600; }
+    input, select, textarea, button {
+      width: 100%; box-sizing: border-box;
+      padding: 10px; border-radius: 10px;
+      border: 1px solid rgba(127,127,127,.35);
+      background: transparent;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .actions button { width: auto; padding: 10px 14px; cursor: pointer; }
+    pre {
+      border: 1px solid rgba(127,127,127,.35);
+      border-radius: 10px; padding: 12px; overflow: auto;
+      white-space: pre-wrap; word-break: break-word;
+      min-height: 140px;
+    }
+    .hint { opacity: .8; font-size: 0.92rem; line-height: 1.4; }
+    .pill { display: inline-block; padding: 3px 8px; border: 1px solid rgba(127,127,127,.35); border-radius: 999px; font-size: 12px; }
+    footer { padding: 16px; border-top: 1px solid rgba(127,127,127,.3); opacity: .9; }
+    .warn { border-left: 4px solid rgba(255,140,0,.9); padding-left: 10px; }
+  </style>
+
+  <!-- jsPDF (client-side PDF) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" integrity="" crossorigin="anonymous"></script>
+</head>
+
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <h1 style="margin:0;font-size:1.1rem;">疑惑・解消手続き案内ジェネレーター（選挙編）</h1>
+    <span class="pill" id="versionPill">v1</span>
+  </div>
+  <p class="hint warn" style="margin:10px 0 0;">
+    これは「疑惑を手続きに落とす」ための整理ツールです。マスコミに投げる前に、まず制度へどうぞ。
+  </p>
+</header>
+
+<main>
+  <div class="grid">
+    <fieldset>
+      <legend>入力フォーム</legend>
+
+      <label for="caseType">ケース</label>
+      <select id="caseType">
+        <option value="counting">ケース1: 開票・集計で不正があった</option>
+        <option value="invalid">ケース2: 選挙実施そのものが違法・違憲</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label for="electionName">対象選挙名（必須）</label>
+          <input id="electionName" placeholder="例: 衆議院議員総選挙 / 市長選挙 など" />
+        </div>
+        <div>
+          <label for="area">自治体（必須）</label>
+          <input id="area" placeholder="例: 東京都新宿区 / 大阪府 など" />
+        </div>
+      </div>
+
+      <div class="row" id="countingOnlyRow">
+        <div>
+          <label for="place">投票所/開票所（任意）</label>
+          <input id="place" placeholder="例: ○○小学校 開票所" />
+        </div>
+        <div>
+          <label for="dateTime">日時（任意）</label>
+          <input id="dateTime" placeholder="例: 2026-02-10 20:30" />
+        </div>
+      </div>
+
+      <label for="claim">主張（何が起きたと考えるか）（必須）</label>
+      <textarea id="claim" placeholder="例: 開票中の票束の扱いが不適切だった / 区割りが平等原則に反する、など"></textarea>
+
+      <label for="facts">具体的事実（誰が・いつ・どこで・何を）（推奨）</label>
+      <textarea id="facts" placeholder="具体性がないと、手続きに乗りません。"></textarea>
+
+      <label for="evidence">証拠（写真/動画/記録/証言など）（推奨）</label>
+      <textarea id="evidence" placeholder="例: 動画URL、公式数値との差分、立会人証言の概要など"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="who">あなたの立場（推奨）</label>
+          <select id="who">
+            <option value="voter">有権者</option>
+            <option value="candidate">候補者/陣営</option>
+            <option value="observer">開票立会人/関係者</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div>
+          <label for="deadlineKnown">期限認識</label>
+          <select id="deadlineKnown">
+            <option value="unknown">知らない</option>
+            <option value="known">把握している</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="actionsWanted">取りたい手続き（選択）</label>
+      <select id="actionsWanted" multiple size="6">
+        <option value="senkan">選挙管理委員会へ照会/異議申出</option>
+        <option value="review">審査申立て</option>
+        <option value="invalidSuit">選挙無効訴訟</option>
+        <option value="winInvalidSuit">当選無効訴訟</option>
+        <option value="criminal">刑事告発（公職選挙法違反 等）</option>
+        <option value="other">その他</option>
+      </select>
+      <p class="hint">複数選択可。PCは Ctrl / Macは Cmd を押しながらクリック。</p>
+
+      <label for="legal">根拠法・条文（任意）</label>
+      <textarea id="legal" placeholder="例: 公職選挙法、憲法14/15/43、行政事件訴訟法 など。不明なら空でOK。"></textarea>
+
+      <div class="actions">
+        <button id="btnGenerate" type="button">生成</button>
+        <button id="btnCopy" type="button">Markdownをコピー</button>
+        <button id="btnDownloadMd" type="button">.mdを保存</button>
+        <button id="btnDownloadPdf" type="button">PDFを保存</button>
+        <button id="btnClear" type="button">クリア</button>
+      </div>
+
+      <p class="hint warn" style="margin-top:12px;">
+        注意: 期限がある手続き（特に選挙無効訴訟）を検討するなら、SNSで叫ぶ前に専門家へ。叫んでも期限は延びません。
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>生成結果（Markdown）</legend>
+      <pre id="out"></pre>
+      <p class="hint">
+        このMarkdownをそのまま貼るだけで「手続き未到達の疑惑」を機械的に選別できます。人間同士で殴り合うより文明的。
+      </p>
+    </fieldset>
+  </div>
+</main>
+
+<footer>
+  <div class="hint">
+    免責: 本ツールは法律相談ではありません。提出・告発・提訴は利用者本人の責任で行ってください。
+  </div>
+</footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const caseType = $("caseType");
+  const countingOnlyRow = $("countingOnlyRow");
+  const out = $("out");
+
+  function selectedValues(selectEl) {
+    return Array.from(selectEl.selectedOptions).map(o => o.value);
+  }
+
+  function escapeMd(s) {
+    return (s || "").replace(/\r\n/g, "\n").trim();
+  }
+
+  function showHideCountingRow() {
+    const isCounting = caseType.value === "counting";
+    countingOnlyRow.style.display = isCounting ? "grid" : "none";
+  }
+
+  function buildMarkdown() {
+    const type = caseType.value;
+    const electionName = escapeMd($("electionName").value);
+    const area = escapeMd($("area").value);
+    const place = escapeMd($("place").value);
+    const dateTime = escapeMd($("dateTime").value);
+    const claim = escapeMd($("claim").value);
+    const facts = escapeMd($("facts").value);
+    const evidence = escapeMd($("evidence").value);
+    const who = $("who").value;
+    const deadlineKnown = $("deadlineKnown").value;
+    const actions = selectedValues($("actionsWanted"));
+    const legal = escapeMd($("legal").value);
+
+    const missing = [];
+    if (!electionName) missing.push("対象選挙名");
+    if (!area) missing.push("自治体");
+    if (!claim) missing.push("主張（何が起きたと考えるか）");
+
+    const caseTitle = type === "counting"
+      ? "ケース1：開票・集計で不正があったと主張する場合"
+      : "ケース2：選挙実施そのものが違法・違憲だったと主張する場合";
+
+    const whoLabel = ({
+      voter: "有権者",
+      candidate: "候補者/陣営",
+      observer: "開票立会人/関係者",
+      other: "その他"
+    })[who] || who;
+
+    const actionsLabel = {
+      senkan: "選挙管理委員会へ照会/異議申出",
+      review: "審査申立て",
+      invalidSuit: "選挙無効訴訟",
+      winInvalidSuit: "当選無効訴訟",
+      criminal: "刑事告発（公職選挙法違反 等）",
+      other: "その他"
+    };
+
+    const actionLines = actions.length
+      ? actions.map(a => `- ${actionsLabel[a] || a}`).join("\n")
+      : "- （未選択）";
+
+    const deadlineNote = type === "counting" || type === "invalid"
+      ? "- 選挙無効訴訟: 選挙後30日以内（目安。具体は専門家・公式情報で確認）"
+      : "";
+
+    const countingExtra = (type === "counting")
+      ? `\n### 追加情報（開票・集計系）\n- 投票所/開票所: ${place || "（未記入）"}\n- 日時: ${dateTime || "（未記入）"}\n`
+      : "";
+
+    const legalBlock = legal
+      ? `\n### 根拠法・条文（申立て/告発の骨格）\n${legal.split("\n").map(l => `- ${l}`).join("\n")}\n`
+      : `\n### 根拠法・条文（申立て/告発の骨格）\n- （未記入）\n`;
+
+    const missingBlock = missing.length
+      ? `\n> 注意: 必須項目が未入力です（${missing.join(" / ")}）。このままだと手続き以前の「感想」扱いになります。\n`
+      : "";
+
+    const base = `# 疑惑・解消手続き案内（選挙編）
+
+## ${caseTitle}
+
+### 0) 概要
+- 対象選挙名: ${electionName || "（未記入）"}
+- 自治体: ${area || "（未記入）"}
+- 申立人の立場: ${whoLabel}
+- 期限認識: ${deadlineKnown === "known" ? "把握している" : "不明/未確認"}
+
+### 1) 主張（必須）
+${claim || "（未記入）"}
+
+### 2) 具体的事実（推奨）
+${facts || "（未記入）"}
+
+### 3) 証拠（推奨）
+${evidence || "（未記入）"}
+${countingExtra}
+### 4) 取りたい手続き（選択）
+${actionLines}
+${legalBlock}
+### 5) 提訴・申立て期限（重要）
+${deadlineNote || "- （対象手続きにより期限が異なります）"}
+
+### 6) 定型確認フレーズ
+- どの機関に
+- いつ
+- どの手続き名で
+- どの法律違反として
+提出しましたか？
+
+### 7) 注意書き（提出用テンプレ）
+本書は、正式な告発・申立て・提訴のための事前整理資料です。
+実際の手続きは、記載者本人の責任で行ってください。
+`;
+
+    return base + missingBlock;
+  }
+
+  function setOutput(md) {
+    out.textContent = md;
+  }
+
+  async function copyToClipboard(text) {
+    await navigator.clipboard.writeText(text);
+  }
+
+  function downloadText(filename, text) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function downloadPdfFromText(title, text) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+    const margin = 36;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxWidth = pageWidth - margin * 2;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    const lines = doc.splitTextToSize(text, maxWidth);
+    let y = margin;
+
+    doc.setFontSize(14);
+    doc.text(title, margin, y);
+    y += 18;
+
+    doc.setFontSize(10);
+    doc.text("Generated locally in your browser (no server).", margin, y);
+    y += 18;
+
+    doc.setFontSize(11);
+
+    for (const line of lines) {
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += 14;
+    }
+
+    const safeName = title.replace(/[\\/:*?"<>|]/g, "_");
+    doc.save(`${safeName}.pdf`);
+  }
+
+  $("btnGenerate").addEventListener("click", () => {
+    setOutput(buildMarkdown());
+  });
+
+  $("btnCopy").addEventListener("click", async () => {
+    const md = out.textContent || buildMarkdown();
+    try {
+      await copyToClipboard(md);
+      alert("コピーしました。人類にしては珍しく前進。");
+    } catch {
+      alert("コピーに失敗。ブラウザの権限設定を見直して。");
+    }
+  });
+
+  $("btnDownloadMd").addEventListener("click", () => {
+    const md = out.textContent || buildMarkdown();
+    downloadText("suspicion-kit.md", md);
+  });
+
+  $("btnDownloadPdf").addEventListener("click", () => {
+    const md = out.textContent || buildMarkdown();
+    downloadPdfFromText("疑惑・解消手続き案内", md);
+  });
+
+  $("btnClear").addEventListener("click", () => {
+    ["electionName","area","place","dateTime","claim","facts","evidence","legal"].forEach(id => $(id).value = "");
+    $("actionsWanted").selectedIndex = -1;
+    $("who").value = "voter";
+    $("deadlineKnown").value = "unknown";
+    out.textContent = "";
+  });
+
+  caseType.addEventListener("change", () => {
+    showHideCountingRow();
+    if (out.textContent) setOutput(buildMarkdown());
+  });
+
+  // init
+  showHideCountingRow();
+  setOutput(buildMarkdown());
+</script>
+</body>
+</html>
